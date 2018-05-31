@@ -2,6 +2,8 @@
 Created on Thu May 31 12:22:16 2018
 
 @author: krishna Nagaraja
+
+This file is for the smoke sensor, which takes only non-image data
 """
 import glib
 import subprocess
@@ -12,6 +14,15 @@ import pickle
 from boxpython import BoxAuthenticateFlow, BoxSession, BoxError
 from pyudev import Context, Monitor
 import re
+
+# For storing tokens and the number of the latest file uploaded, 
+# a pickle file is used. The name of this file is Emp.pickle
+# The advantage of pickle file is that python datastructures like dictionaries
+# can be stored and accessed very fast. Here we store a dictionary called Emp
+# The keys of this dictionary are :
+# a: access_token
+# r: refresh_token
+# no: the number of the latest file uploaded
 
 def tokens_changed(refresh_token, access_token):
 	
@@ -34,36 +45,26 @@ def start_session():
 	box = BoxSession('c7ai5c6k9o45tzn98m62udt8rq9j52xd', 'apaGFUm7KVNxQZ9KinRDGg9k68AexsBx', refresh_token, access_token, tokens_changed)
 	return box
 
-def get_day_no():
-	pickle_off = open("Emp.pickle","rb")
-	emp = pickle.load(pickle_off)
-	no=emp["no"]
-	pickle_off.close()
-	return no
-def setno(no):
-	pickle_off = open("Emp.pickle","rb")
-	emp = pickle.load(pickle_off)
-	emp["no"]=no
-	pickle_off.close()
-	pickling_on = open("Emp.pickle","wb")
-	pickle.dump(emp, pickling_on)
-	pickling_on.close()
+
+
 
 #################################################################
 # Put the id of the folder 'data' or whatever you named it, as noted down in step 4 here 
-root_folder_id=49857411974 #PACT_web_service
+root_folder_id=49857411974 # foder id of PACT_web_service
 user="krishn"  #first six characters of user name (must be unique)
 ################################################################
 
 def upload_folder(path,box,pid):
+	#In PACT_web_service, we have to get id of data_folder
 	x=box.get_folder_items(pid)
 	for i in x[u'entries']:
 	 if(str(i[u'name']) == "data_folder"):
 	   print str(i[u'id'])
 	   pid=int(str(i[u'id']))
 	   break
-	walk_generator=os.walk(path)
-	root,dirs,files=next(walk_generator)
+	#once we have the id of the data_foder, we want to create a new folder
+	# with the format "subID-yyyy-mm-dd-serialno"   
+	
 	rootdir=time.strftime("-%Y-%m-%d")
 	rootdir=user+rootdir
 	for i in range(1,2000):
@@ -74,18 +75,22 @@ def upload_folder(path,box,pid):
 	  break
 	 except BoxError,berr:
 	  continue
+	# Then we create a folder pact_bin inside it
 	try:
 	 response=box.create_folder("pact_bin",response["id"])
 	 print "done.."
 	except BoxError,berr:
 	 print berr
-	
+
+	walk_generator=os.walk(path)
+	root,dirs,files=next(walk_generator)
+
 	pickle_off=open("Emp.pickle","rb")
 	emp=pickle.load(pickle_off)
-	latest=emp["no"]
+	latest=emp["no"] #load the latest number of file uploaded
 	pickle_off.close()
 	for i in files:
-	 num=int(re.findall(r'\d+',i)[0])
+	 num=int(re.findall(r'\d+',i)[0]) #The number on the bin file
 	 if(num>latest):
     		if(i[0]=='.'):
     		 continue
@@ -102,7 +107,7 @@ def upload_folder(path,box,pid):
     		  print 'Item with same name exists'
     		 else:
     		  print '%s' % berr            
-		
+	#ignore this loop	
 	for i in dirs:
 		continue
 		if(i[0]=="."):
@@ -166,17 +171,21 @@ except:
 	    		target = target_folder+"/"+op[device['DEVNAME']].split("/")[-1]
 	    		print target            
 		        try:
+		        	#delete previous file
 		            shutil.rmtree(target+"_prev")
 		        except OSError:
 		            pass
 		        try:
+		        	#store the previous file for backup
 		        	os.rename(target,target+"_prev")
 		        except OSError:
-		            pass	
+		            pass
+		        #copy files from USB to pi	
 		        shutil.copytree(op[device['DEVNAME']], target)
 		       	print "done"
 		       	path=target+"/"
 		       	box=start_session()
+		       	#upload to box
 		       	upload_folder(path,box,root_folder_id)
        # print 'event {0} on device {1}'.format(action, device)
 
@@ -189,6 +198,7 @@ monitor = Monitor.from_netlink(context)
 monitor.filter_by(subsystem='block')
 observer = MonitorObserver(monitor)
 
+#call the function device_event when an event is observed
 observer.connect('device-event', device_event)
 monitor.start()
 
