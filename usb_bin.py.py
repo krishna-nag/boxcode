@@ -51,35 +51,52 @@ def setno(no):
 #################################################################
 # Put the id of the folder 'data' or whatever you named it, as noted down in step 4 here 
 root_folder_id=0
+user="krishn"  #first six characters of user name (must be unique)
 ################################################################
 
 def upload_folder(path,box,pid):
+	x=box.get_folder_items(pid)
+	for i in x[u'entries']:
+	 if(str(i[u'name']) == "data_folder"):
+	   pid=int(str(i[u'id']))
+	   break
 	walk_generator=os.walk(path)
 	root,dirs,files=next(walk_generator)
-	rootdir=""
-	if(str(root.split('/')[-1])==''):
-		rootdir=str(root.split('/')[-2])
-	else:
-		rootdir=str(root.split('/')[-1])
-	if(pid==root_folder_id):
-		no=get_day_no()
-		no+=1
-		rootdir="day"+str(no)
-		setno(no)
-	response = box.create_folder(rootdir,pid)
+	rootdir=time.strftime("-%Y-%m-%d")
+	rootdir=user+rootdir
+	for i in range(1,2000):
+    	suffix="-"+str(i)
+    	try:
+    	 response = box.create_folder(rootdir,pid)
+    	 break
+    	except BoxError,berr:
+    	 continue
+	response=box.create_folder("pact_bin",reponse["id"])
+	pickle_off=open("Emp.pickle","rb")
+	emp=pickle.load(pickle_off)
+	latest=emp["no"]
+	pickle_off.close()
 	for i in files:
-		if(i[0]=='.'):
-		 continue
-		print path+i  
-		try:
-		 box.chunk_upload_file(i, response["id"], path+i)
-		except BoxError, berr:
-		 if(berr.status == 409):
-		  print 'Item with same name exists'
-		 else:
-		  print '%s' % berr            
+    	num=int(re.findall(r'\d+',i)[0])
+    	if(num>latest):
+    		if(i[0]=='.'):
+    		 continue
+    		print path+i  
+    		try:
+    		 box.chunk_upload_file(i, response["id"], path+i)
+    		 pickle_on=open("Emp.pickle","wb")
+    		 emp2=emp
+    		 emp2["no"]=num
+    		 pickle.dump(emp,pickle_on)
+    		 pickle_on.close()
+    		except BoxError, berr:
+    		 if(berr.status == 409):
+    		  print 'Item with same name exists'
+    		 else:
+    		  print '%s' % berr            
 		
 	for i in dirs:
+		continue
 		if(i[0]=="."):
 		 continue            
 		print path+i
@@ -87,8 +104,8 @@ def upload_folder(path,box,pid):
 
 
 ###################################################################
-#####  Enter the absolute path to target folder in pi
-target_folder="/home/pi/Desktop/krishna-2018-05-30-1/pact_bin"
+#####  Enter the absolute path to target folder in pi (don't put / at end)
+target_folder="/home/pi/Desktop/data"
 ###################################################################
 try:
     from pyudev.glib import MonitorObserver
