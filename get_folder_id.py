@@ -8,6 +8,12 @@ Created on Thu May 31 12:22:16 2018
 from boxpython import BoxAuthenticateFlow, BoxSession, BoxError
 import pickle
 
+def tokens_changed(refresh_token, access_token):
+	emp = {"r":refresh_token,"a":access_token,"no":0}
+	pickling_on = open("Emp.pickle","wb")
+	pickle.dump(emp, pickling_on)
+	pickling_on.close()
+    
 pickle_off = open("Emp.pickle","rb")
 emp = pickle.load(pickle_off)
 refresh_token=emp["r"]

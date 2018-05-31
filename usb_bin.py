@@ -11,6 +11,7 @@ import os
 import pickle
 from boxpython import BoxAuthenticateFlow, BoxSession, BoxError
 from pyudev import Context, Monitor
+import re
 
 def tokens_changed(refresh_token, access_token):
 	
@@ -50,7 +51,7 @@ def setno(no):
 
 #################################################################
 # Put the id of the folder 'data' or whatever you named it, as noted down in step 4 here 
-root_folder_id=0
+root_folder_id=49857411974 #PACT_web_service
 user="krishn"  #first six characters of user name (must be unique)
 ################################################################
 
@@ -58,6 +59,7 @@ def upload_folder(path,box,pid):
 	x=box.get_folder_items(pid)
 	for i in x[u'entries']:
 	 if(str(i[u'name']) == "data_folder"):
+	   print str(i[u'id'])
 	   pid=int(str(i[u'id']))
 	   break
 	walk_generator=os.walk(path)
@@ -65,20 +67,26 @@ def upload_folder(path,box,pid):
 	rootdir=time.strftime("-%Y-%m-%d")
 	rootdir=user+rootdir
 	for i in range(1,2000):
-    	suffix="-"+str(i)
-    	try:
-    	 response = box.create_folder(rootdir,pid)
-    	 break
-    	except BoxError,berr:
-    	 continue
-	response=box.create_folder("pact_bin",reponse["id"])
+	 suffix="-"+str(i)
+	 try:
+	  response = box.create_folder(rootdir+suffix,pid)
+	  print suffix
+	  break
+	 except BoxError,berr:
+	  continue
+	try:
+	 response=box.create_folder("pact_bin",response["id"])
+	 print "done.."
+	except BoxError,berr:
+	 print berr
+	
 	pickle_off=open("Emp.pickle","rb")
 	emp=pickle.load(pickle_off)
 	latest=emp["no"]
 	pickle_off.close()
 	for i in files:
-    	num=int(re.findall(r'\d+',i)[0])
-    	if(num>latest):
+	 num=int(re.findall(r'\d+',i)[0])
+	 if(num>latest):
     		if(i[0]=='.'):
     		 continue
     		print path+i  
